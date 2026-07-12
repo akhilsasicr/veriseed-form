@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>VeriSeed -- Create Survey</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --brand: #1c6e4a; --brand-dark: #124d34; --accent: #c2872b;
@@ -11,9 +12,18 @@
   html { background: var(--bg); color-scheme: light; }
   body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 900px;
          margin: 0 auto; padding: 32px 24px 60px; color: var(--ink); background: var(--bg); }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-  .brand-word { font-weight: 800; font-size: 21px; letter-spacing: -.02em; color: var(--brand-dark); }
-  .brand-tag { font-size: 12px; color: var(--grey); margin-left: 2px; }
+  .nav { display: flex; align-items: center; gap: 24px; margin: -32px -24px 30px; padding: 16px 24px;
+         background: var(--brand-dark); }
+  .nav-left { display: flex; align-items: center; gap: 22px; }
+  .brand-left { display: flex; align-items: center; gap: 9px; }
+  .brand-word { font-weight: 800; font-size: 16.5px; letter-spacing: -.02em; color: #fff; }
+  .nav a.navlink { color: rgba(255,255,255,.72); text-decoration: none; font-size: 13.5px; font-weight: 600; }
+  .nav a.navlink.active { color: #fff; }
+  .account { font-size: 12.5px; color: rgba(255,255,255,.68); margin-left: auto; }
+  .account a { color: #fff; cursor: pointer; text-decoration: underline; margin-left: 8px; }
+  .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+                border-radius: 50%; background: var(--brand); color: #fff; font-size: 12px; font-weight: 700;
+                margin-right: 8px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
           padding: 24px 28px; box-shadow: 0 1px 3px rgba(20,40,25,.05); margin-bottom: 20px; }
   h1 { font-size: 19px; margin: 0 0 4px; }
@@ -50,57 +60,56 @@
 </head>
 <body>
 
-<div class="brand">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#1c6e4a"/>
-    <path d="M12 21V9" stroke="#c2872b" stroke-width="1.4" stroke-linecap="round"/>
-  </svg>
-  <span class="brand-word">VeriSeed</span>
-  <span class="brand-tag">Create Survey</span>
+<div class="nav">
+  <div class="nav-left">
+    <div class="brand-left">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#fff"/>
+        <path d="M12 21V9" stroke="#d8a94f" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-word">VeriSeed</span>
+    </div>
+    <a class="navlink" href="index.html">Home</a>
+    <a class="navlink active" href="create_survey.html">Create Survey</a>
+    <a class="navlink" href="admin.html">View Submissions</a>
+  </div>
+  <div class="account" id="accountBox"></div>
 </div>
 
 <div class="note">
-  Creates a new survey (a separate HTA project/panel, per PLAN section 18) via the <code>admin-api</code>
-  Edge Function -- not a direct secret-key connection, because Supabase now blocks any
-  secret/service-role key used from a browser outright (confirmed 2026-07-11, see PLAN section 20).
-  The facilitator key below is a much lower-sensitivity passphrase, not the real database key.
-  Seed true-values entered here are stored server-side and never exposed to the collection
-  form (dossier-redaction rule, paper section 5.4).
+  Build a new HTA elicitation survey here: add questions, mark which ones are seed
+  questions with a known true value (used to score how well-calibrated each expert is),
+  then add your experts and get their links. Everything you create belongs to your
+  account only -- no one else can see or edit it. Seed true-values are stored securely and
+  never shown to experts filling out the form.
   <b>No PICOT support yet</b> -- questions created here won't show a PICOT panel to experts.
 </div>
 
-<div class="card">
-  <h1>Connect</h1>
-  <div class="row" style="margin-top:14px">
-    <div><label>Facilitator key</label><input type="password" id="facilitatorKey" placeholder="paste facilitator key"></div>
-  </div>
-  <button onclick="connect()">Connect</button>
-  <div class="error" id="connectError"></div>
-  <div class="ok" id="connectOk"></div>
-</div>
-
-<div class="card" id="surveyCard" style="display:none">
-  <h1>Survey details</h1>
+<div class="card" id="surveyCard">
+  <h1><span class="step-badge">1</span>Survey details</h1>
   <div class="row" style="margin-top:14px">
     <div><label>Survey ID (short slug, e.g. "rcc-hta-sctimst-2026")</label><input type="text" id="surveyId"></div>
     <div><label>Survey name</label><input type="text" id="surveyName"></div>
   </div>
 </div>
 
-<div class="card" id="questionsCard" style="display:none">
-  <h1>Questions</h1>
+<div class="card" id="questionsCard">
+  <h1><span class="step-badge">2</span>Questions</h1>
   <div id="questionsList"></div>
   <button class="secondary" onclick="addQuestion()">+ Add question</button>
 </div>
 
-<div class="card" id="createCard" style="display:none">
+<div class="card" id="createCard">
+  <h1><span class="step-badge">3</span>Create the survey</h1>
+  <p class="hint" style="color:var(--grey);font-size:13px;margin:0 0 12px">Saves your
+    survey and questions as a draft -- not visible to experts until you publish it below.</p>
   <button onclick="createSurvey()">Create survey (draft)</button>
   <div class="error" id="createError"></div>
   <div class="ok" id="createOk"></div>
 </div>
 
 <div class="card" id="publishCard" style="display:none">
-  <h2>Publish</h2>
+  <h1><span class="step-badge">4</span>Publish</h1>
   <p class="hint" style="color:var(--grey);font-size:13px">
     Draft surveys are not visible to the collection form. Publish when ready to send links.</p>
   <button onclick="publishSurvey()" id="publishBtn">Publish survey</button>
@@ -108,7 +117,7 @@
 </div>
 
 <div class="card" id="linksCard" style="display:none">
-  <h2>Add experts</h2>
+  <h1><span class="step-badge">5</span>Add experts</h1>
   <p class="hint" style="color:var(--grey); font-size:12.5px; margin:0 0 12px">
     Reminders on = automatic email nudges via the schedule below. Off = you're reaching
     this person another way (e.g. phone) -- their link still works, they just never get
@@ -124,31 +133,19 @@
   <div id="linksOut" style="margin-top:14px"></div>
 </div>
 
-<script src="admin_api_client.js"></script>
+<script src="auth_client.js"></script>
 <script>
-let facilitatorKey = null;
+let currentUser = null;
 let questionCount = 0;
 let createdSurveyId = null;
 
-async function connect() {
-  const key = document.getElementById("facilitatorKey").value.trim();
-  const err = document.getElementById("connectError");
-  const ok = document.getElementById("connectOk");
-  err.textContent = ""; ok.textContent = "";
-  if (!key) { err.textContent = "Enter the facilitator key."; return; }
-  try {
-    await callAdminApi("list_surveys", {}, key); // round-trip check that the key works
-  } catch (e) {
-    err.textContent = "Connect failed: " + e.message;
-    return;
-  }
-  facilitatorKey = key;
-  ok.textContent = "Connected.";
-  document.getElementById("surveyCard").style.display = "block";
-  document.getElementById("questionsCard").style.display = "block";
-  document.getElementById("createCard").style.display = "block";
+(async () => {
+  currentUser = await requireAuth();
+  if (!currentUser) return; // requireAuth already redirected to login.html
+  document.getElementById("accountBox").innerHTML =
+    `Signed in as ${currentUser.email} <a onclick="signOut()">Sign out</a>`;
   if (document.getElementById("questionsList").children.length === 0) addQuestion();
-}
+})();
 
 function addQuestion() {
   questionCount++;
@@ -219,7 +216,11 @@ async function createSurvey() {
   }
 
   try {
-    await callAdminApi("create_survey", { surveyId, surveyName, questions }, facilitatorKey);
+    const { error: surveyErr } = await supabaseClient.from("surveys")
+      .insert({ id: surveyId, name: surveyName, status: "draft", owner_id: currentUser.id });
+    if (surveyErr) throw surveyErr;
+    const { error: qErr } = await supabaseClient.from("questions").insert(questions);
+    if (qErr) throw qErr;
     createdSurveyId = surveyId;
     ok.textContent = `Survey "${surveyId}" created as a draft with ${questions.length} question(s).`;
     document.getElementById("publishCard").style.display = "block";
@@ -232,8 +233,12 @@ async function createSurvey() {
 async function publishSurvey() {
   if (!createdSurveyId) return;
   const ok = document.getElementById("publishOk");
+  const senderEmail = document.getElementById("senderEmail").value.trim();
   try {
-    await callAdminApi("publish_survey", { surveyId: createdSurveyId }, facilitatorKey);
+    const update = { status: "published" };
+    if (senderEmail) update.sender_email = senderEmail;
+    const { error } = await supabaseClient.from("surveys").update(update).eq("id", createdSurveyId);
+    if (error) throw error;
     ok.textContent = "Published. The collection form will now load this survey.";
     document.getElementById("publishBtn").textContent = "Re-publish";
   } catch (e) {
@@ -277,7 +282,6 @@ async function createExperts() {
   if (!createdSurveyId) return;
   const err = document.getElementById("expertsError");
   err.textContent = "";
-  const senderEmail = document.getElementById("senderEmail").value.trim();
   const rows = [...document.querySelectorAll("#expertRows .question-block")];
   if (rows.length === 0) { err.textContent = "Add at least one expert."; return; }
 
@@ -294,16 +298,11 @@ async function createExperts() {
   if (experts.some(e => !e.expert_alias)) { err.textContent = "Every expert needs a name."; return; }
 
   try {
-    if (senderEmail) {
-      // publish_survey now also accepts senderEmail and sets surveys.sender_email --
-      // re-running this on an already-published survey is harmless (status stays
-      // "published", just re-set).
-      await callAdminApi("publish_survey", { surveyId: createdSurveyId, senderEmail }, facilitatorKey);
-    }
-    const result = await callAdminApi("create_experts", { experts }, facilitatorKey);
+    const { data, error } = await supabaseClient.from("experts").insert(experts).select();
+    if (error) throw error;
     const base = location.href.replace(/create_survey\.html.*$/, "elicitation_form.html");
     const out = document.getElementById("linksOut");
-    out.innerHTML = result.experts.map(e => {
+    out.innerHTML = data.map(e => {
       const link = `${base}?survey=${createdSurveyId}&id=${encodeURIComponent(e.expert_alias)}`;
       return `<div class="link-row"><span>${e.expert_alias}</span>
         <code class="link" style="flex:1">${link}</code></div>`;

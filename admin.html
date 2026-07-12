@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>VeriSeed -- Analyst View</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --brand: #1c6e4a; --brand-dark: #124d34; --accent: #c2872b;
@@ -11,9 +12,15 @@
   html { background: var(--bg); color-scheme: light; }
   body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 1040px;
          margin: 0 auto; padding: 32px 24px 60px; color: var(--ink); background: var(--bg); }
-  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-  .brand-word { font-weight: 800; font-size: 21px; letter-spacing: -.02em; color: var(--brand-dark); }
-  .brand-tag { font-size: 12px; color: var(--grey); margin-left: 2px; }
+  .nav { display: flex; align-items: center; gap: 24px; margin: -32px -24px 30px; padding: 16px 24px;
+         background: var(--brand-dark); }
+  .nav-left { display: flex; align-items: center; gap: 22px; }
+  .brand-left { display: flex; align-items: center; gap: 9px; }
+  .brand-word { font-weight: 800; font-size: 16.5px; letter-spacing: -.02em; color: #fff; }
+  .nav a.navlink { color: rgba(255,255,255,.72); text-decoration: none; font-size: 13.5px; font-weight: 600; }
+  .nav a.navlink.active { color: #fff; }
+  .account { font-size: 12.5px; color: rgba(255,255,255,.68); margin-left: auto; }
+  .account a { color: #fff; cursor: pointer; text-decoration: underline; margin-left: 8px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
           padding: 24px 28px; box-shadow: 0 1px 3px rgba(20,40,25,.05); margin-bottom: 20px; }
   h1 { font-size: 19px; margin: 0 0 4px; }
@@ -21,7 +28,7 @@
   table { border-collapse: collapse; width: 100%; margin: 12px 0; }
   th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
   th { color: var(--grey); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
-  input[type=text], input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px;
+  input[type=text], select { width: 100%; box-sizing: border-box; padding: 10px 12px;
          font-size: 14px; border: 1.5px solid var(--line); border-radius: 8px; font-family: inherit; }
   input[type=number] { width: 64px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 6px; }
   label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
@@ -51,36 +58,42 @@
 </head>
 <body>
 
-<div class="brand">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#1c6e4a"/>
-    <path d="M12 21V9" stroke="#c2872b" stroke-width="1.4" stroke-linecap="round"/>
-  </svg>
-  <span class="brand-word">VeriSeed</span>
-  <span class="brand-tag">Analyst View</span>
+<div class="nav">
+  <div class="nav-left">
+    <div class="brand-left">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#fff"/>
+        <path d="M12 21V9" stroke="#d8a94f" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-word">VeriSeed</span>
+    </div>
+    <a class="navlink" href="index.html">Home</a>
+    <a class="navlink" href="create_survey.html">Create Survey</a>
+    <a class="navlink active" href="admin.html">View Submissions</a>
+  </div>
+  <div class="account" id="accountBox"></div>
 </div>
 
 <div class="note">
-  Reads submissions via the <code>admin-api</code> Edge Function -- not a direct secret-key
-  connection, because Supabase now blocks any secret/service-role key used from a browser
-  outright (confirmed 2026-07-11, see PLAN section 20). The facilitator key below is a
-  lower-sensitivity passphrase, not the real database key.
+  This is where you review what your experts have submitted, once a survey is underway.
+  Each expert answers the same set of questions -- some genuinely uncertain, some with a
+  real known answer used purely to score how well-calibrated that expert is. Once
+  responses come in, run the analysis script separately and paste its output below to see
+  each expert's performance-weighted contribution, not just a simple average. You'll only
+  ever see surveys you created yourself, plus the shared demo -- unless your account has
+  admin visibility, in which case every survey is listed here for review.
 </div>
 
 <div class="card" id="connectCard">
-  <h1>Connect</h1>
-  <div style="display:flex; gap:12px; margin-top:14px; flex-wrap:wrap">
-    <div style="flex:2; min-width:260px">
-      <label>Facilitator key</label>
-      <input type="password" id="facilitatorKey" placeholder="paste facilitator key">
+  <h1>Choose a survey</h1>
+  <div style="display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; align-items:flex-end">
+    <div style="flex:1; min-width:260px">
+      <label>Survey</label>
+      <select id="surveySelect"></select>
     </div>
-    <div style="flex:1; min-width:140px">
-      <label>Survey ID</label>
-      <input type="text" id="surveyId" value="demo">
+    <div>
+      <button onclick="loadSubmissions()">Load submissions</button>
     </div>
-  </div>
-  <div style="margin-top:16px">
-    <button onclick="loadSubmissions()">Load submissions</button>
   </div>
   <div class="error" id="connectError"></div>
 </div>
@@ -98,9 +111,8 @@
   <p class="hint" style="color:var(--grey); font-size:12.5px; margin:0 0 12px">
     Cooke weighting, contamination flagging, and cross-validation run in R
     (<code>tool/scripts/analyze_supabase.R</code>) against the exported data above -- not
-    recomputed here in JavaScript, to avoid a second implementation of the statistics
-    silently drifting from <code>pkg/R/</code> (PLAN section 2). Paste that script's JSON output
-    below to load the results.
+    recomputed here in JavaScript, so there's only one implementation of the statistics to
+    keep correct. Paste that script's JSON output below to load the results.
   </p>
   <textarea id="analysisInput" placeholder='Paste the contents of veriseed_analysis_results.json here'></textarea>
   <div style="margin-top:10px">
@@ -115,23 +127,46 @@
   <pre id="raw"></pre>
 </div>
 
-<script src="admin_api_client.js"></script>
+<script src="auth_client.js"></script>
 <script>
+let currentUser = null;
 let lastData = { experts: [], responses: [] };
 let analysis = null; // parsed output of tool/scripts/analyze_supabase.R, or null if not loaded
 
-async function loadSubmissions() {
-  const key = document.getElementById("facilitatorKey").value.trim();
-  const surveyId = document.getElementById("surveyId").value.trim();
+(async () => {
+  currentUser = await requireAuth();
+  if (!currentUser) return; // requireAuth already redirected to login.html
+  document.getElementById("accountBox").innerHTML =
+    `Signed in as ${currentUser.email} <a onclick="signOut()">Sign out</a>`;
+  await loadSurveyOptions();
+})();
+
+async function loadSurveyOptions() {
   const errBox = document.getElementById("connectError");
-  errBox.textContent = "";
-  if (!key || !surveyId) {
-    errBox.textContent = "Fill in both fields.";
+  const { data, error } = await supabaseClient.from("surveys").select("id,name,is_template").order("name");
+  if (error) { errBox.textContent = "Could not load your surveys: " + error.message; return; }
+  const select = document.getElementById("surveySelect");
+  if (!data || data.length === 0) {
+    select.innerHTML = '<option value="">No surveys yet -- create one first</option>';
     return;
   }
+  select.innerHTML = data.map(s =>
+    `<option value="${s.id}">${s.name}${s.is_template ? " (shared demo)" : ""}</option>`).join("");
+}
+
+async function loadSubmissions() {
+  const surveyId = document.getElementById("surveySelect").value;
+  const errBox = document.getElementById("connectError");
+  errBox.textContent = "";
+  if (!surveyId) { errBox.textContent = "Choose a survey first."; return; }
   try {
-    const data = await callAdminApi("list_submissions", { surveyId }, key);
-    lastData = { experts: data.experts, responses: data.responses };
+    const [{ data: experts, error: exErr }, { data: responses, error: rErr }] = await Promise.all([
+      supabaseClient.from("experts").select("*").eq("survey_id", surveyId),
+      supabaseClient.from("responses").select("*").eq("survey_id", surveyId),
+    ]);
+    if (exErr) throw exErr;
+    if (rErr) throw rErr;
+    lastData = { experts, responses };
     renderTable();
   } catch (e) {
     errBox.textContent = "Load failed: " + e.message;
@@ -168,7 +203,7 @@ function renderTable() {
         </div>`;
       } else {
         weightCell = `<input type="number" value="1" step="0.1"
-             title="No VeriSeed analysis loaded for this expert yet -- manual override, mirrors SEE Platform's own weight column (PLAN section 10)">`;
+             title="No VeriSeed analysis loaded for this expert yet -- manual override until the analysis is loaded">`;
       }
 
       let flagCell = '<span class="hint" style="color:var(--grey)">--</span>';
@@ -237,9 +272,8 @@ function renderAnalysisSummary() {
   }
   if ((analysis.seedIds || []).length < 8) {
     html += `<p class="hint" style="margin-top:10px">Only ${analysis.seedIds.length} seed(s)
-      used -- Cooke's chi-square calibration test is asymptotic and unreliable below ~8 seeds
-      (pkg/R's own warning). Treat the weight column as illustrative, not final, until more
-      seeds are added.</p>`;
+      used -- Cooke's chi-square calibration test is unreliable below about 8 seeds. Treat
+      the weight column as illustrative, not final, until more seeds are added.</p>`;
   }
   box.innerHTML = html;
 }

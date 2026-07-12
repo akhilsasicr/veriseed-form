@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VeriSeed -- Sign In</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --brand: #1c6e4a; --brand-dark: #124d34;
+    --ink: #17231c; --grey: #6b7368; --line: #dfe6de; --bg: #f8f7f2; --card: #ffffff;
+  }
+  html { background: var(--bg); color-scheme: light; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 420px;
+         margin: 0 auto; padding: 60px 24px; color: var(--ink); background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
+  .brand-word { font-weight: 800; font-size: 22px; letter-spacing: -.02em; color: var(--brand-dark); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+          padding: 24px 28px; box-shadow: 0 1px 3px rgba(20,40,25,.05); }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p.hint { font-size: 13px; color: var(--grey); margin: 0 0 18px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  input[type=email] { width: 100%; box-sizing: border-box; padding: 10px 12px;
+         font-size: 14px; border: 1.5px solid var(--line); border-radius: 8px; font-family: inherit; }
+  button { background: var(--brand); color: #fff; border: none; border-radius: 9px;
+           padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 14px; }
+  button:hover { background: var(--brand-dark); }
+  button:disabled { background: var(--line); color: var(--grey); cursor: default; }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 10px; }
+  .success { color: var(--brand-dark); font-size: 13.5px; margin-top: 10px; }
+  .note { background: #fbf3e3; border: 1px solid #eed9ab; border-radius: 10px;
+          padding: 11px 15px; font-size: 12.5px; margin-top: 20px; color: #6b5522; }
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#1c6e4a"/>
+    <path d="M12 21V9" stroke="#c2872b" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+  <span class="brand-word">VeriSeed</span>
+</div>
+<a href="index.html" style="font-size:12.5px; color:var(--grey); text-decoration:none">&larr; Back to home</a>
+
+<div class="card" style="margin-top:14px">
+  <h1>Sign in</h1>
+  <p class="hint">Enter the email your account was created with. We'll send you a one-click login link -- no password needed.</p>
+  <label>Email</label>
+  <input type="email" id="email" placeholder="you@example.com">
+  <div>
+    <button id="sendBtn" onclick="sendLink()">Send login link</button>
+  </div>
+  <div class="error" id="errorBox"></div>
+  <div class="success" id="successBox"></div>
+</div>
+
+<div class="note">
+  Accounts are invite-only. If you don't have one yet, ask whoever is running this HTA
+  project to create one for you.
+</div>
+
+<script>
+const SUPABASE_URL = "https://ookdqnnjrgeyxgjaoyzi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable__6BDtcLwR90R4ohXFo_LXA_IdSFnPly";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// If already signed in, skip straight to the dashboard.
+(async () => {
+  const { data } = await supabaseClient.auth.getSession();
+  if (data.session) location.href = "create_survey.html";
+})();
+
+async function sendLink() {
+  const email = document.getElementById("email").value.trim();
+  const btn = document.getElementById("sendBtn");
+  const errBox = document.getElementById("errorBox");
+  const okBox = document.getElementById("successBox");
+  errBox.textContent = "";
+  okBox.textContent = "";
+  if (!email) { errBox.textContent = "Enter your email first."; return; }
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: location.origin + location.pathname.replace("login.html", "create_survey.html") }
+  });
+  btn.disabled = false;
+  btn.textContent = "Send login link";
+  if (error) {
+    errBox.textContent = error.message;
+  } else {
+    okBox.textContent = "Check your email for the login link.";
+  }
+}
+</script>
+</body>
+</html>

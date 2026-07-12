@@ -438,15 +438,12 @@ async function submitResponses() {
     document.getElementById("app").innerHTML = `
       <div class="badge">Submitted</div>
       <h2>Thank you — your responses have been saved.</h2>
-      <p class="hint">Expert: <code>${expertId}</code>, saved to the real database.
-        An analyst can query Supabase or use <code>tool/scripts/import_supabase.R</code>
-        for analysis.</p>`;
+      <p class="hint">Your responses have been recorded. You can close this page now.</p>`;
   } catch (e) {
     btn.disabled = false;
     btn.textContent = "Submit";
     errBox.textContent = "Submit failed: " + (e.message || e) +
-      ". If this mentions a foreign key / question_id, the `questions` table needs the " +
-      "seed rows from the bottom of tool/db/schema.sql run first.";
+      ". Please try again, or contact whoever sent you this survey link.";
   }
 }
 
