@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>VeriSeed -- Expert Elicitation</title>
+<title>VeriSeed — Expert Elicitation</title>
 <style>
   :root {
     --brand: #1c6e4a;       /* forest green -- distinct from Dark Peak's violet */
@@ -111,7 +111,7 @@
 
 <div class="note">
   Connected to a live Supabase database. Submissions are insert-only and cannot be edited
-  after you submit -- use "Back" beforehand if you want to change an answer.
+  after you submit — use "Back" beforehand if you want to change an answer.
 </div>
 
 <div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
@@ -120,7 +120,7 @@
 <script>
 const CHIP_BUDGET = 20; // matches the real elicitation platform's fixed chip allocation
 
-// QUESTIONS is now loaded dynamically from Supabase (survey-creation UI, PLAN section 19) instead
+// QUESTIONS is now loaded dynamically from Supabase (survey-creation UI, PLAN §19) instead
 // of being hardcoded here -- a survey is chosen via ?survey=<id> in the URL (defaults to
 // "demo", the same bundled demo survey SEE Platform ships). Populated by loadSurvey() below
 // before the first render(). NOTE: per-question PICOT info (population/intervention/
@@ -129,7 +129,7 @@ const CHIP_BUDGET = 20; // matches the real elicitation platform's fixed chip al
 let QUESTIONS = [];
 let surveyName = "";
 
-// Consent (PLAN section 12/section 14, resolved 2026-07-11: an in-tool checkbox is sufficient for this
+// Consent (PLAN §12/§14, resolved 2026-07-11: an in-tool checkbox is sufficient for this
 // institution -- no formal ethics-committee review required). Recorded to the
 // consent_records table on submit, exact wording included for an auditable record.
 const CONSENT_TEXT = "I understand my responses will be recorded and used for this HTA " +
@@ -230,7 +230,7 @@ function renderRoulette(app, q) {
 
   if (state.low == null || state.high == null) {
     app.innerHTML = `
-      <div class="badge">${q.id.toUpperCase()} &middot; Belief Allocation</div>
+      <div class="badge">Question ${current + 1} &middot; Belief Allocation</div>
       <h2>${q.title}</h2>
       ${picotHtml(q)}
       <div class="task-label">Task 1</div>
@@ -275,11 +275,11 @@ function renderRoulette(app, q) {
   const summary = summaryLines(state.chips, edges, total, q.units);
 
   app.innerHTML = `
-    <div class="badge">${q.id.toUpperCase()} &middot; Belief Allocation</div>
+    <div class="badge">Question ${current + 1} &middot; Belief Allocation</div>
     <h2>${q.title}</h2>
     ${picotHtml(q)}
     <div class="task-label">Task 2</div>
-    <p><b>Place your ${CHIP_BUDGET} chips across the bins below -- more chips in a bin means
+    <p><b>Place your ${CHIP_BUDGET} chips across the bins below — more chips in a bin means
       you think that range is more likely.</b></p>
     <div class="budget">
       <b>${remaining}</b> <span class="hint" style="margin:0">chip${remaining === 1 ? "" : "s"} remaining</span>
@@ -356,7 +356,7 @@ function renderLowHighBest(app, q) {
   const state = responses[q.id] || { low: "", high: "", best: "", rationale: "" };
   responses[q.id] = state;
   app.innerHTML = `
-    <div class="badge">${q.id.toUpperCase()} &middot; Low-High-Best</div>
+    <div class="badge">Question ${current + 1} &middot; Low-High-Best</div>
     <h2>${q.title}</h2>
     <p><b>What do you think are the lowest and highest plausible values (${q.units})
       for this outcome?</b></p>
@@ -392,14 +392,32 @@ function nextQuestion() { current++; render(); }
 function renderReview(app) {
   setProgress();
   document.getElementById("progressBar").style.width = "100%";
-  const payload = { expertId, surveyId: SURVEY_ID, responses };
+  const u = (units) => units ? " " + units : "";
+  const items = QUESTIONS.map((q, i) => {
+    const r = responses[q.id] || {};
+    let answer;
+    if (q.type === "roulette") {
+      answer = `Plausible range: <b>${r.low}</b> to <b>${r.high}</b>${u(q.units)} ` +
+               `(${CHIP_BUDGET} chips allocated across this range)`;
+    } else {
+      answer = `Lowest <b>${r.low}</b> &middot; Best estimate <b>${r.best}</b> &middot; ` +
+               `Highest <b>${r.high}</b>${u(q.units)}`;
+    }
+    const rationale = r.rationale
+      ? `<div class="hint" style="margin-top:6px">Your rationale: ${r.rationale}</div>` : "";
+    return `<div style="padding:14px 0;border-bottom:1px solid var(--line)">
+        <div class="hint" style="margin:0 0 4px">Question ${i + 1} of ${QUESTIONS.length}</div>
+        <div style="font-weight:600;margin-bottom:6px">${q.title}</div>
+        <div>${answer}</div>
+        ${rationale}
+      </div>`;
+  }).join("");
   app.innerHTML = `
     <div class="badge">Last Page</div>
     <h2>Ready to submit your responses?</h2>
-    <p class="hint">Everything below will be written to the real database (Supabase project
-      -- insert-only, per PLAN section 9's security design). This cannot be edited after submitting;
-      go Back now if you want to change anything first.</p>
-    <div class="review"><pre>${JSON.stringify(payload, null, 2)}</pre></div>
+    <p class="hint">Please review your answers below. Once you submit they are saved and
+      cannot be edited — use Back now if you want to change anything first.</p>
+    <div class="summary">${items}</div>
     <div class="actions">
       <button class="secondary" onclick="current = QUESTIONS.length - 1; render();">Back</button>
       <button class="primary" id="submitBtn" onclick="submitResponses()">Submit</button>
@@ -411,7 +429,7 @@ async function submitResponses() {
   const btn = document.getElementById("submitBtn");
   const errBox = document.getElementById("submitError");
   btn.disabled = true;
-  btn.textContent = "Submitting...";
+  btn.textContent = "Submitting…";
   errBox.textContent = "";
   try {
     const expertRowId = await ensureExpert(SURVEY_ID, expertId);
@@ -419,7 +437,7 @@ async function submitResponses() {
     await submitResponsesToSupabase(SURVEY_ID, expertRowId, responses);
     document.getElementById("app").innerHTML = `
       <div class="badge">Submitted</div>
-      <h2>Thank you -- your responses have been saved.</h2>
+      <h2>Thank you — your responses have been saved.</h2>
       <p class="hint">Expert: <code>${expertId}</code>, saved to the real database.
         An analyst can query Supabase or use <code>tool/scripts/import_supabase.R</code>
         for analysis.</p>`;
