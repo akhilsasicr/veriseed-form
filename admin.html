@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VeriSeed -- Analyst View</title>
+<style>
+  :root {
+    --brand: #1c6e4a; --brand-dark: #124d34; --accent: #c2872b;
+    --ink: #17231c; --grey: #6b7368; --line: #dfe6de; --bg: #f8f7f2; --card: #ffffff;
+  }
+  html { background: var(--bg); color-scheme: light; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; max-width: 1040px;
+         margin: 0 auto; padding: 32px 24px 60px; color: var(--ink); background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .brand-word { font-weight: 800; font-size: 21px; letter-spacing: -.02em; color: var(--brand-dark); }
+  .brand-tag { font-size: 12px; color: var(--grey); margin-left: 2px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+          padding: 24px 28px; box-shadow: 0 1px 3px rgba(20,40,25,.05); margin-bottom: 20px; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  th { color: var(--grey); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
+  input[type=text], input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px;
+         font-size: 14px; border: 1.5px solid var(--line); border-radius: 8px; font-family: inherit; }
+  input[type=number] { width: 64px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 6px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  button { background: var(--brand); color: #fff; border: none; border-radius: 9px;
+           padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; margin-right: 8px; }
+  button:hover { background: var(--brand-dark); }
+  button.secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+  .note { background: #fbf3e3; border: 1px solid #eed9ab; border-radius: 10px;
+          padding: 11px 15px; font-size: 12.5px; margin-bottom: 20px; color: #6b5522; }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 8px; }
+  .empty { color: var(--grey); font-style: italic; font-size: 14px; }
+  pre { background: #f4f7f4; padding: 14px; border-radius: 10px; overflow: auto; font-size: 12px;
+        font-family: "SF Mono", Menlo, monospace; }
+  textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px;
+             font-family: "SF Mono", Menlo, monospace; border: 1.5px solid var(--line);
+             border-radius: 8px; min-height: 90px; }
+  .flag { display: inline-block; background: #fdeaea; color: #a13a3a; font-size: 11px;
+          font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .flag.clean { background: #eaf5ee; color: var(--brand-dark); }
+  .weight-pair { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+  .weight-pair .cooke { font-weight: 700; font-size: 14px; }
+  .weight-pair .equal { color: var(--grey); }
+  .cv-box { display: flex; gap: 28px; margin-top: 6px; }
+  .cv-box .stat b { font-size: 20px; display: block; color: var(--brand-dark); }
+  .cv-box .stat span { font-size: 12px; color: var(--grey); }
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#1c6e4a"/>
+    <path d="M12 21V9" stroke="#c2872b" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+  <span class="brand-word">VeriSeed</span>
+  <span class="brand-tag">Analyst View</span>
+</div>
+
+<div class="note">
+  Reads submissions via the <code>admin-api</code> Edge Function -- not a direct secret-key
+  connection, because Supabase now blocks any secret/service-role key used from a browser
+  outright (confirmed 2026-07-11, see PLAN section 20). The facilitator key below is a
+  lower-sensitivity passphrase, not the real database key.
+</div>
+
+<div class="card" id="connectCard">
+  <h1>Connect</h1>
+  <div style="display:flex; gap:12px; margin-top:14px; flex-wrap:wrap">
+    <div style="flex:2; min-width:260px">
+      <label>Facilitator key</label>
+      <input type="password" id="facilitatorKey" placeholder="paste facilitator key">
+    </div>
+    <div style="flex:1; min-width:140px">
+      <label>Survey ID</label>
+      <input type="text" id="surveyId" value="demo">
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <button onclick="loadSubmissions()">Load submissions</button>
+  </div>
+  <div class="error" id="connectError"></div>
+</div>
+
+<div class="card" id="resultsCard" style="display:none">
+  <h2>Submissions</h2>
+  <div id="table"></div>
+  <div style="margin-top:14px">
+    <button class="secondary" onclick="exportJSON()">Export JSON (for R analysis)</button>
+  </div>
+</div>
+
+<div class="card" id="analysisCard" style="display:none">
+  <h2>VeriSeed Analysis</h2>
+  <p class="hint" style="color:var(--grey); font-size:12.5px; margin:0 0 12px">
+    Cooke weighting, contamination flagging, and cross-validation run in R
+    (<code>tool/scripts/analyze_supabase.R</code>) against the exported data above -- not
+    recomputed here in JavaScript, to avoid a second implementation of the statistics
+    silently drifting from <code>pkg/R/</code> (PLAN section 2). Paste that script's JSON output
+    below to load the results.
+  </p>
+  <textarea id="analysisInput" placeholder='Paste the contents of veriseed_analysis_results.json here'></textarea>
+  <div style="margin-top:10px">
+    <button onclick="loadAnalysis()">Load analysis results</button>
+  </div>
+  <div class="error" id="analysisError"></div>
+  <div id="analysisSummary" style="margin-top:18px"></div>
+</div>
+
+<div class="card" id="rawCard" style="display:none">
+  <h2>Raw data</h2>
+  <pre id="raw"></pre>
+</div>
+
+<script src="admin_api_client.js"></script>
+<script>
+let lastData = { experts: [], responses: [] };
+let analysis = null; // parsed output of tool/scripts/analyze_supabase.R, or null if not loaded
+
+async function loadSubmissions() {
+  const key = document.getElementById("facilitatorKey").value.trim();
+  const surveyId = document.getElementById("surveyId").value.trim();
+  const errBox = document.getElementById("connectError");
+  errBox.textContent = "";
+  if (!key || !surveyId) {
+    errBox.textContent = "Fill in both fields.";
+    return;
+  }
+  try {
+    const data = await callAdminApi("list_submissions", { surveyId }, key);
+    lastData = { experts: data.experts, responses: data.responses };
+    renderTable();
+  } catch (e) {
+    errBox.textContent = "Load failed: " + e.message;
+  }
+}
+
+function renderTable() {
+  const { experts, responses } = lastData;
+  document.getElementById("resultsCard").style.display = "block";
+  document.getElementById("analysisCard").style.display = "block";
+  document.getElementById("rawCard").style.display = "block";
+  const tableDiv = document.getElementById("table");
+
+  if (experts.length === 0) {
+    tableDiv.innerHTML = '<p class="empty">No submissions yet for this survey.</p>';
+  } else {
+    const qIds = [...new Set(responses.map(r => r.question_id))];
+    const contamByAlias = {};
+    if (analysis && analysis.contamination) {
+      analysis.contamination.forEach(c => { contamByAlias[c.expert] = c; });
+    }
+    const rows = experts.map(ex => {
+      const own = responses.filter(r => r.expert_id === ex.id);
+      const answered = new Set(own.map(r => r.question_id)).size;
+      const latest = own.reduce((m, r) => !m || r.submitted_at > m ? r.submitted_at : m, null);
+
+      let weightCell;
+      if (analysis && analysis.cooke && analysis.cooke.weights[ex.expert_alias] != null) {
+        const cooke = analysis.cooke.weights[ex.expert_alias];
+        const equal = (analysis.equalWeights || {})[ex.expert_alias];
+        weightCell = `<div class="weight-pair">
+          <span class="cooke">${cooke.toFixed(3)}</span>
+          <span class="equal">equal-weight: ${equal != null ? equal.toFixed(3) : "--"}</span>
+        </div>`;
+      } else {
+        weightCell = `<input type="number" value="1" step="0.1"
+             title="No VeriSeed analysis loaded for this expert yet -- manual override, mirrors SEE Platform's own weight column (PLAN section 10)">`;
+      }
+
+      let flagCell = '<span class="hint" style="color:var(--grey)">--</span>';
+      const c = contamByAlias[ex.expert_alias];
+      if (c) {
+        flagCell = c.flaggedCount > 0
+          ? `<span class="flag" title="Flagged on: ${c.flaggedSeeds.join(', ')}">${c.flaggedCount} seed${c.flaggedCount === 1 ? "" : "s"} flagged</span>`
+          : `<span class="flag clean">clean</span>`;
+      }
+
+      return `<tr>
+        <td>${ex.expert_alias}</td>
+        <td>${latest ? new Date(latest).toLocaleString() : "--"}</td>
+        <td>${answered} / ${qIds.length}</td>
+        <td>${flagCell}</td>
+        <td>${weightCell}</td>
+      </tr>`;
+    }).join("");
+    tableDiv.innerHTML = `
+      <table>
+        <tr><th>Expert</th><th>Last submitted</th><th>Questions answered</th>
+            <th>Contamination</th><th>Weight (Cooke / equal)</th></tr>
+        ${rows}
+      </table>`;
+  }
+  document.getElementById("raw").textContent = JSON.stringify(lastData, null, 2);
+}
+
+function loadAnalysis() {
+  const raw = document.getElementById("analysisInput").value.trim();
+  const errBox = document.getElementById("analysisError");
+  errBox.textContent = "";
+  if (!raw) { errBox.textContent = "Paste the analysis JSON first."; return; }
+  try {
+    analysis = JSON.parse(raw);
+  } catch (e) {
+    errBox.textContent = "Could not parse JSON: " + e.message;
+    analysis = null;
+    return;
+  }
+  renderTable();
+  renderAnalysisSummary();
+}
+
+function renderAnalysisSummary() {
+  const box = document.getElementById("analysisSummary");
+  if (!analysis) { box.innerHTML = ""; return; }
+
+  let html = "";
+  if (analysis.cooke && analysis.cooke.fellBack) {
+    html += `<p class="hint" style="color:#a13a3a">All experts failed the calibration
+      threshold -- weights fell back to equal-weighting. This can happen legitimately with
+      very few seeds (see below); it is not silently hidden.</p>`;
+  }
+  if ((analysis.excludedExperts || []).length > 0) {
+    html += `<p class="hint" style="color:#a13a3a">Excluded from weighting (didn't answer
+      every seed): ${analysis.excludedExperts.join(", ")}</p>`;
+  }
+  if (analysis.crossValidation) {
+    html += `<div class="cv-box">
+      <div class="stat"><b>${analysis.crossValidation.dmCalibration.toExponential(2)}</b>
+        <span>Out-of-sample DM calibration<br>(leave-one-seed-out)</span></div>
+      <div class="stat"><b>${analysis.crossValidation.seedsUsed}</b>
+        <span>Seeds used</span></div>
+    </div>`;
+  }
+  if ((analysis.seedIds || []).length < 8) {
+    html += `<p class="hint" style="margin-top:10px">Only ${analysis.seedIds.length} seed(s)
+      used -- Cooke's chi-square calibration test is asymptotic and unreliable below ~8 seeds
+      (pkg/R's own warning). Treat the weight column as illustrative, not final, until more
+      seeds are added.</p>`;
+  }
+  box.innerHTML = html;
+}
+
+function exportJSON() {
+  const text = JSON.stringify(lastData, null, 2);
+  document.getElementById("raw").textContent = text;
+  document.getElementById("raw").scrollIntoView({ behavior: "smooth" });
+  const blob = new Blob([text], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "veriseed_supabase_export.json";
+  a.click();
+}
+</script>
+</body>
+</html>

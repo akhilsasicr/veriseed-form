@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VeriSeed -- Expert Elicitation</title>
+<style>
+  :root {
+    --brand: #1c6e4a;       /* forest green -- distinct from Dark Peak's violet */
+    --brand-dark: #124d34;
+    --accent: #c2872b;      /* warm gold, "seed" accent */
+    --ink: #17231c;
+    --grey: #6b7368;
+    --line: #dfe6de;
+    --bg: #f8f7f2;          /* warm cream, not stark white */
+    --card: #ffffff;
+  }
+  html { background: var(--bg); color-scheme: light; }
+  body { font-family: "Iowan Old Style", "Georgia", -apple-system, "Segoe UI", serif;
+         max-width: 880px; margin: 0 auto; padding: 32px 24px 60px; color: var(--ink);
+         background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .brand svg { flex-shrink: 0; }
+  .brand-word { font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+                font-weight: 800; font-size: 21px; letter-spacing: -.02em; color: var(--brand-dark); }
+  .brand-tag { font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+               font-size: 12px; color: var(--grey); margin-left: 2px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+          padding: 28px 30px; box-shadow: 0 1px 3px rgba(20,40,25,.05); }
+  .progress { height: 6px; background: #eceee9; border-radius: 3px; margin-bottom: 22px;
+              overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--brand), var(--accent));
+                   border-radius: 3px; transition: width .35s; }
+  .badge { display: inline-block; background: #e8f2ec; color: var(--brand-dark);
+           font-family: -apple-system, Segoe UI, Arial, sans-serif;
+           font-size: 11.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+           padding: 4px 11px; border-radius: 20px; margin-bottom: 14px; }
+  h2 { line-height: 1.35; font-weight: 600; font-size: 22px; }
+  .picot-toggle { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+                  color: var(--grey); font-size: 13.5px; cursor: pointer; user-select: none;
+                  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+                  padding: 10px 0; margin: 16px 0; }
+  .picot-body { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+                display: none; font-size: 13.5px; color: var(--grey); padding: 8px 0; }
+  .picot-body.open { display: block; }
+  .task-label { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+                color: var(--brand); font-size: 12.5px; font-weight: 700;
+                text-transform: uppercase; letter-spacing: .04em; }
+  .hint { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+          color: var(--grey); font-size: 13px; margin-top: 3px; }
+  .row2 { display: flex; gap: 28px; margin: 16px 0; }
+  .field label { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+                 display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+  .field input[type=number] { width: 150px; padding: 9px 10px; font-size: 15px;
+                               border: 1.5px solid var(--line); border-radius: 8px;
+                               font-family: -apple-system, Segoe UI, Arial, sans-serif; }
+  .field input[type=number]:focus { outline: none; border-color: var(--brand); }
+  button { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+           background: var(--ink); color: #fff; border: none; border-radius: 9px;
+           padding: 11px 22px; font-size: 14.5px; font-weight: 600; cursor: pointer;
+           transition: transform .1s, opacity .15s; }
+  button:active { transform: scale(.97); }
+  button.primary { background: var(--brand); }
+  button.primary:hover:not(:disabled) { background: var(--brand-dark); }
+  button.secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  .actions { display: flex; justify-content: space-between; margin-top: 26px; }
+  .budget { display: flex; align-items: center; gap: 10px; margin: 18px 0 6px;
+            font-family: -apple-system, Segoe UI, Arial, sans-serif; }
+  .budget b { font-size: 15px; }
+  .budget .track { flex: 1; height: 8px; background: #eceee9; border-radius: 4px; overflow: hidden; }
+  .budget .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--brand));
+                   border-radius: 4px; transition: width .2s; }
+  #bins { display: flex; gap: 3px; height: 170px; margin: 10px 0 4px; align-items: flex-end; }
+  .bin-col { flex: 1; display: flex; flex-direction: column; align-items: center;
+             justify-content: flex-end; cursor: pointer; height: 100%; }
+  .bin-col .stack { width: 100%; display: flex; flex-direction: column-reverse; gap: 2px; }
+  .bin-col .chip { width: 100%; height: 7px; background: var(--brand); border-radius: 2px;
+                    transition: background .1s; }
+  .bin-col:hover .chip { background: var(--accent); }
+  .bin-col .lbl { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+                  font-size: 10px; color: var(--grey); margin-top: 6px; white-space: nowrap; }
+  .summary { background: #f4f7f4; border: 1px solid var(--line); border-radius: 10px;
+             padding: 16px 18px; margin-top: 20px;
+             font-family: -apple-system, Segoe UI, Arial, sans-serif; }
+  .summary b { font-size: 14px; }
+  .summary ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; }
+  .summary li { margin-bottom: 4px; }
+  textarea { width: 100%; box-sizing: border-box; padding: 11px; font-family: -apple-system, Segoe UI, Arial, sans-serif;
+             font-size: 14px; border: 1.5px solid var(--line); border-radius: 8px;
+             margin-top: 8px; min-height: 68px; }
+  textarea:focus { outline: none; border-color: var(--brand); }
+  .review pre { font-family: "SF Mono", Menlo, monospace; font-size: 12.5px;
+                background: #f4f7f4; padding: 16px; border-radius: 10px; overflow: auto; }
+  .note { font-family: -apple-system, Segoe UI, Arial, sans-serif;
+          background: #fbf3e3; border: 1px solid #eed9ab; border-radius: 10px;
+          padding: 11px 15px; font-size: 12.5px; margin-bottom: 18px; color: #6b5522; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase_client.js"></script>
+</head>
+<body>
+
+<div class="brand">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+    <path d="M12 21c-4.5 0-7-3-7-7 0-6 7-11 7-11s7 5 7 11c0 4-2.5 7-7 7z" fill="#1c6e4a"/>
+    <path d="M12 21V9" stroke="#c2872b" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+  <span class="brand-word">VeriSeed</span>
+  <span class="brand-tag" id="surveyNameTag">Structured Expert Elicitation</span>
+</div>
+
+<div class="note">
+  Connected to a live Supabase database. Submissions are insert-only and cannot be edited
+  after you submit -- use "Back" beforehand if you want to change an answer.
+</div>
+
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+<div class="card" id="app"></div>
+
+<script>
+const CHIP_BUDGET = 20; // matches the real elicitation platform's fixed chip allocation
+
+// QUESTIONS is now loaded dynamically from Supabase (survey-creation UI, PLAN section 19) instead
+// of being hardcoded here -- a survey is chosen via ?survey=<id> in the URL (defaults to
+// "demo", the same bundled demo survey SEE Platform ships). Populated by loadSurvey() below
+// before the first render(). NOTE: per-question PICOT info (population/intervention/
+// comparator/outcome/time) is not yet supported by the survey-creation UI -- questions
+// created there won't show a PICOT panel, unlike the original hardcoded demo question.
+let QUESTIONS = [];
+let surveyName = "";
+
+// Consent (PLAN section 12/section 14, resolved 2026-07-11: an in-tool checkbox is sufficient for this
+// institution -- no formal ethics-committee review required). Recorded to the
+// consent_records table on submit, exact wording included for an auditable record.
+const CONSENT_TEXT = "I understand my responses will be recorded and used for this HTA " +
+  "elicitation exercise, and I agree to participate.";
+
+let current = -1; // -1 = consent screen, shown before any question
+let consentGiven = false;
+const responses = {};
+const expertId = new URLSearchParams(location.search).get("id") || "demo-expert";
+const SURVEY_ID = new URLSearchParams(location.search).get("survey") || "demo";
+
+async function loadSurvey() {
+  const app = document.getElementById("app");
+  app.innerHTML = "<p class=\"hint\">Loading survey...</p>";
+  try {
+    const surveyResp = await supabaseClient.from("surveys").select("*").eq("id", SURVEY_ID).single();
+    if (surveyResp.error || !surveyResp.data) {
+      app.innerHTML = `<div class="badge">Not found</div><h2>Survey not available</h2>
+        <p class="hint">No published survey with id "${SURVEY_ID}" was found. Check the link,
+        or ask whoever sent it to confirm the survey has been published.</p>`;
+      return;
+    }
+    surveyName = surveyResp.data.name;
+    document.getElementById("surveyNameTag").textContent = surveyName;
+    const qResp = await supabaseClient.from("questions")
+      .select("id,title,question_type,units,min_value,max_value,is_seed")
+      .eq("survey_id", SURVEY_ID).order("order_index");
+    if (qResp.error || !qResp.data || qResp.data.length === 0) {
+      app.innerHTML = `<div class="badge">Not found</div><h2>Survey has no questions</h2>
+        <p class="hint">Survey "${surveyName}" exists but has no questions yet.</p>`;
+      return;
+    }
+    QUESTIONS = qResp.data.map(q => ({
+      id: q.id, type: q.question_type, title: q.title,
+      units: q.units, min: q.min_value, max: q.max_value
+    }));
+    render();
+  } catch (e) {
+    app.innerHTML = `<div class="badge">Error</div><h2>Could not load the survey</h2>
+      <p class="hint">${e.message || e}</p>`;
+  }
+}
+
+function setProgress() {
+  const pct = current < 0 ? 0 : Math.round((current / QUESTIONS.length) * 100);
+  document.getElementById("progressBar").style.width = pct + "%";
+}
+
+function renderConsent(app) {
+  app.innerHTML = `
+    <div class="badge">Before You Begin</div>
+    <h2>Participant Consent</h2>
+    <p>This is a structured expert elicitation exercise for HTA decision support. Your
+      judgments will be recorded, analyzed, and may be pooled with other experts' responses
+      to inform a health technology assessment.</p>
+    <div class="summary">
+      <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer">
+        <input type="checkbox" id="consentCheck" style="margin-top:3px; width:16px; height:16px"
+               onchange="document.getElementById('consentContinue').disabled = !this.checked">
+        <span>${CONSENT_TEXT}</span>
+      </label>
+    </div>
+    <div class="actions" style="justify-content:flex-end">
+      <button class="primary" id="consentContinue" disabled onclick="giveConsent()">Continue</button>
+    </div>`;
+}
+
+function giveConsent() {
+  consentGiven = true;
+  current = 0;
+  render();
+}
+
+function render() {
+  setProgress();
+  const app = document.getElementById("app");
+  if (current === -1) return renderConsent(app);
+  if (current >= QUESTIONS.length) return renderReview(app);
+  const q = QUESTIONS[current];
+  app.innerHTML = "";
+  if (q.type === "roulette") renderRoulette(app, q);
+  else renderLowHighBest(app, q);
+}
+
+function picotHtml(q) {
+  if (!q.picot) return "";
+  const rows = Object.entries(q.picot)
+    .map(([k, v]) => `<div><b>${k}:</b> ${v}</div>`).join("");
+  return `<div class="picot-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+            &#9432; Show PICOT Information</div>
+          <div class="picot-body">${rows}</div>`;
+}
+
+// ---- Roulette (chip allocation, fixed budget of CHIP_BUDGET) ----
+function renderRoulette(app, q) {
+  const state = responses[q.id] || { low: null, high: null, chips: null, rationale: "" };
+  responses[q.id] = state;
+
+  if (state.low == null || state.high == null) {
+    app.innerHTML = `
+      <div class="badge">${q.id.toUpperCase()} &middot; Belief Allocation</div>
+      <h2>${q.title}</h2>
+      ${picotHtml(q)}
+      <div class="task-label">Task 1</div>
+      <p><b>Please define the range of values you think the outcome will fall within.</b></p>
+      <div class="hint">You can still adjust the range afterwards.</div>
+      <div class="row2">
+        <div class="field">
+          <label>Lowest plausible value</label>
+          <input type="number" id="lowInput" min="${q.min}" max="${q.max}">
+        </div>
+        <div class="field">
+          <label>Highest plausible value</label>
+          <input type="number" id="highInput" min="${q.min}" max="${q.max}">
+        </div>
+      </div>
+      <div class="hint">Values must be between ${q.min} and ${q.max}.</div>
+      <div class="actions">
+        <button class="secondary" ${current === 0 ? "disabled" : ""} onclick="goBack()">Back</button>
+        <button class="primary" onclick="confirmRange('${q.id}')">Confirm</button>
+      </div>`;
+    return;
+  }
+
+  const nBins = 10;
+  const lo = state.low, hi = state.high;
+  const edges = Array.from({ length: nBins + 1 }, (_, i) => lo + (hi - lo) * i / nBins);
+  if (!state.chips) state.chips = Array(nBins).fill(0);
+  const total = state.chips.reduce((a, b) => a + b, 0);
+  const remaining = CHIP_BUDGET - total;
+  const maxStack = Math.max(1, ...state.chips);
+
+  const bins = state.chips.map((c, i) => `
+    <div class="bin-col" onclick="addChip('${q.id}', ${i})"
+         oncontextmenu="removeChip(event,'${q.id}', ${i})"
+         title="Click: place a chip here. Right-click: remove one.">
+      <div class="stack" style="height:${(c / (maxStack + 3)) * 150}px">
+        ${Array.from({ length: c }).map(() => '<div class="chip"></div>').join("")}
+      </div>
+      <div class="lbl">${edges[i].toFixed(0)}</div>
+    </div>`).join("") + `<div class="lbl" style="position:relative;left:8px;align-self:flex-end;margin-bottom:0">${hi.toFixed(0)}</div>`;
+
+  const summary = summaryLines(state.chips, edges, total, q.units);
+
+  app.innerHTML = `
+    <div class="badge">${q.id.toUpperCase()} &middot; Belief Allocation</div>
+    <h2>${q.title}</h2>
+    ${picotHtml(q)}
+    <div class="task-label">Task 2</div>
+    <p><b>Place your ${CHIP_BUDGET} chips across the bins below -- more chips in a bin means
+      you think that range is more likely.</b></p>
+    <div class="budget">
+      <b>${remaining}</b> <span class="hint" style="margin:0">chip${remaining === 1 ? "" : "s"} remaining</span>
+      <div class="track"><div class="fill" style="width:${(total / CHIP_BUDGET) * 100}%"></div></div>
+    </div>
+    <div id="bins">${bins}</div>
+    <button class="secondary" onclick="changeRange('${q.id}')">&uarr; Change range</button>
+    <div class="summary">
+      <b>Summary</b>
+      <ul>${summary || "<li>Allocate chips to see a summary.</li>"}</ul>
+      <div class="hint">Please review the summary and make sure the distribution of chips is
+        as you intended.</div>
+    </div>
+    <div class="task-label" style="margin-top:20px">Rationale</div>
+    <textarea placeholder="Please provide a brief explanation for your choices and any additional comments."
+              oninput="responses['${q.id}'].rationale = this.value">${state.rationale}</textarea>
+    <div class="actions">
+      <button class="secondary" onclick="goBack()">Back</button>
+      <button class="primary" ${total !== CHIP_BUDGET ? "disabled" : ""} onclick="nextQuestion()">Continue</button>
+    </div>`;
+}
+
+function summaryLines(chips, edges, total, units) {
+  if (total === 0) return "";
+  const cum = [];
+  let running = 0;
+  for (const c of chips) { running += c; cum.push(running / total); }
+  const marks = [0, 0.33, 0.66, 1.0];
+  const lines = [];
+  for (let i = 0; i < marks.length - 1; i++) {
+    const loIdx = cum.findIndex(c => c >= marks[i]);
+    const hiIdx = cum.findIndex(c => c >= marks[i + 1]);
+    if (loIdx < 0 || hiIdx < 0) continue;
+    const pct = Math.round((marks[i + 1] - marks[i]) * 100);
+    lines.push(`<li>The probability that the ${units} is between
+      <b>${edges[loIdx].toFixed(0)}</b> and <b>${edges[Math.min(hiIdx + 1, edges.length - 1)].toFixed(0)}</b>
+      is <b>~${pct}%</b></li>`);
+  }
+  return lines.join("");
+}
+
+function confirmRange(id) {
+  const lo = parseFloat(document.getElementById("lowInput").value);
+  const hi = parseFloat(document.getElementById("highInput").value);
+  if (isNaN(lo) || isNaN(hi) || hi <= lo) {
+    alert("Enter a valid range: highest must be greater than lowest.");
+    return;
+  }
+  responses[id].low = lo;
+  responses[id].high = hi;
+  render();
+}
+function changeRange(id) {
+  responses[id].low = null;
+  responses[id].high = null;
+  responses[id].chips = null;
+  render();
+}
+function addChip(id, i) {
+  const state = responses[id];
+  const total = state.chips.reduce((a, b) => a + b, 0);
+  if (total >= CHIP_BUDGET) return; // fixed budget -- no more chips to place
+  state.chips[i]++;
+  render();
+}
+function removeChip(e, id, i) {
+  e.preventDefault();
+  if (responses[id].chips[i] > 0) responses[id].chips[i]--;
+  render();
+}
+
+// ---- Low-High-Best (3-point) ----
+function renderLowHighBest(app, q) {
+  const state = responses[q.id] || { low: "", high: "", best: "", rationale: "" };
+  responses[q.id] = state;
+  app.innerHTML = `
+    <div class="badge">${q.id.toUpperCase()} &middot; Low-High-Best</div>
+    <h2>${q.title}</h2>
+    <p><b>What do you think are the lowest and highest plausible values (${q.units})
+      for this outcome?</b></p>
+    <div class="row2">
+      <div class="field"><label>Lowest plausible value</label>
+        <input type="number" value="${state.low}" oninput="updateLHB('${q.id}','low',this.value)"></div>
+      <div class="field"><label>Highest plausible value</label>
+        <input type="number" value="${state.high}" oninput="updateLHB('${q.id}','high',this.value)"></div>
+    </div>
+    <div class="hint">Values must be between ${q.min} and ${q.max}.</div>
+    <p style="margin-top:20px"><b>What is your best estimate for this outcome?</b></p>
+    <div class="field"><label>&#9678; Best estimate</label>
+      <input type="number" value="${state.best}" oninput="updateLHB('${q.id}','best',this.value)"></div>
+    <div class="task-label" style="margin-top:20px">Rationale</div>
+    <textarea placeholder="Please provide a rationale for your estimate."
+              oninput="updateLHB('${q.id}','rationale',this.value)">${state.rationale}</textarea>
+    <div class="actions">
+      <button class="secondary" onclick="goBack()">Back</button>
+      <button class="primary" ${isComplete(state) ? "" : "disabled"} onclick="nextQuestion()">Continue</button>
+    </div>`;
+}
+function updateLHB(id, field, val) {
+  responses[id][field] = field === "rationale" ? val : parseFloat(val);
+  render();
+}
+function isComplete(s) {
+  return [s.low, s.high, s.best].every(v => v !== "" && !isNaN(v)) && s.high > s.low;
+}
+
+function goBack() { if (current > 0) { current--; render(); } }
+function nextQuestion() { current++; render(); }
+
+function renderReview(app) {
+  setProgress();
+  document.getElementById("progressBar").style.width = "100%";
+  const payload = { expertId, surveyId: SURVEY_ID, responses };
+  app.innerHTML = `
+    <div class="badge">Last Page</div>
+    <h2>Ready to submit your responses?</h2>
+    <p class="hint">Everything below will be written to the real database (Supabase project
+      -- insert-only, per PLAN section 9's security design). This cannot be edited after submitting;
+      go Back now if you want to change anything first.</p>
+    <div class="review"><pre>${JSON.stringify(payload, null, 2)}</pre></div>
+    <div class="actions">
+      <button class="secondary" onclick="current = QUESTIONS.length - 1; render();">Back</button>
+      <button class="primary" id="submitBtn" onclick="submitResponses()">Submit</button>
+    </div>
+    <div id="submitError" class="hint" style="color:#b91c1c;margin-top:10px"></div>`;
+}
+
+async function submitResponses() {
+  const btn = document.getElementById("submitBtn");
+  const errBox = document.getElementById("submitError");
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+  errBox.textContent = "";
+  try {
+    const expertRowId = await ensureExpert(SURVEY_ID, expertId);
+    if (consentGiven) await recordConsent(expertRowId, CONSENT_TEXT);
+    await submitResponsesToSupabase(SURVEY_ID, expertRowId, responses);
+    document.getElementById("app").innerHTML = `
+      <div class="badge">Submitted</div>
+      <h2>Thank you -- your responses have been saved.</h2>
+      <p class="hint">Expert: <code>${expertId}</code>, saved to the real database.
+        An analyst can query Supabase or use <code>tool/scripts/import_supabase.R</code>
+        for analysis.</p>`;
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "Submit";
+    errBox.textContent = "Submit failed: " + (e.message || e) +
+      ". If this mentions a foreign key / question_id, the `questions` table needs the " +
+      "seed rows from the bottom of tool/db/schema.sql run first.";
+  }
+}
+
+loadSurvey();
+</script>
+</body>
+</html>
