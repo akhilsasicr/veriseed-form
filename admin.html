@@ -156,15 +156,18 @@ const ADMIN_API_URL = "https://ookdqnnjrgeyxgjaoyzi.supabase.co/functions/v1/adm
 const ADMIN_API_PUBLISHABLE_KEY = "sb_publishable__6BDtcLwR90R4ohXFo_LXA_IdSFnPly";
 
 async function callAdminApiAsUser(action, payload) {
+  // The gateway rejects any Authorization value other than a recognized project API key
+  // (even with per-function JWT verification off), so the real user session token rides
+  // in the request body instead (userJwt) and is verified server-side there.
   const { data: { session } } = await supabaseClient.auth.getSession();
   const res = await fetch(ADMIN_API_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${session.access_token}`,
+      "Authorization": `Bearer ${ADMIN_API_PUBLISHABLE_KEY}`,
       "apikey": ADMIN_API_PUBLISHABLE_KEY,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ action, ...payload }),
+    body: JSON.stringify({ action, userJwt: session.access_token, ...payload }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
