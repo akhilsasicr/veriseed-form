@@ -83,12 +83,17 @@ async function sendLink() {
   btn.textContent = "Sending...";
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: location.origin + location.pathname.replace("login.html", "index.html") }
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: location.origin + location.pathname.replace("login.html", "index.html")
+    }
   });
   btn.disabled = false;
   btn.textContent = "Send login link";
   if (error) {
-    errBox.textContent = error.message;
+    errBox.textContent = /not allowed|signups/i.test(error.message)
+      ? "No account found for that email. Use \"Request access\" below first."
+      : error.message;
   } else {
     okBox.textContent = "Check your email for the login link.";
   }
