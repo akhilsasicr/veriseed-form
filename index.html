@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>VeriSeed -- Structured Expert Elicitation for HTA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --brand: #1c6e4a; --brand-dark: #124d34; --brand-light: #2f8a5f; --accent: #c2872b;
@@ -73,7 +74,7 @@
         </svg>
         <span class="brand-word">VeriSeed</span>
       </div>
-      <a class="signin-link" href="login.html">Sign in</a>
+      <span id="accountBox"><a class="signin-link" href="login.html">Sign in</a></span>
     </div>
     <h1>Structured expert elicitation for Health Technology Assessment</h1>
     <p class="lead">
@@ -138,25 +139,36 @@
       </a>
     </div>
 
-    <div class="card">
+    <div class="card" id="createCard" style="display:none">
       <a href="create_survey.html">
         <div class="icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div><h3>Create a survey</h3>
           <p>Set up a new HTA elicitation exercise -- add questions, mark seeds with their
-            true values, and invite experts. Requires an account.</p></div>
+            true values, and invite experts.</p></div>
       </a>
     </div>
 
-    <div class="card">
+    <div class="card" id="adminCard" style="display:none">
       <a href="admin.html">
         <div class="icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19V10M12 19V5M20 19v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div><h3>View submissions</h3>
           <p>Review expert responses for a survey you created, export the data, and load
-            Cooke-weighting analysis results. Requires an account.</p></div>
+            Cooke-weighting analysis results.</p></div>
+      </a>
+    </div>
+
+    <div class="card" id="signinPrompt">
+      <a href="login.html">
+        <div class="icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div><h3>Sign in to create a survey or view submissions</h3>
+          <p>Those tools are only shown once you're signed in -- accounts are invite-only,
+            and each account only ever sees its own surveys.</p></div>
       </a>
     </div>
   </div>
@@ -166,6 +178,20 @@
     accounts are invite-only and isolated from one another. If you don't have an account
     yet, ask whoever is running your HTA project to create one for you.
   </div>
+
+  <script src="auth_client.js"></script>
+  <script>
+    (async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) {
+        document.getElementById("accountBox").innerHTML =
+          `<span style="color:rgba(255,255,255,.85); font-size:13.5px">Signed in as ${data.session.user.email} <a onclick="signOut()" style="color:#fff; cursor:pointer; text-decoration:underline; margin-left:6px">Sign out</a></span>`;
+        document.getElementById("createCard").style.display = "block";
+        document.getElementById("adminCard").style.display = "block";
+        document.getElementById("signinPrompt").style.display = "none";
+      }
+    })();
+  </script>
 
 </div>
 </body>

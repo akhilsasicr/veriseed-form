@@ -64,10 +64,11 @@ const SUPABASE_URL = "https://ookdqnnjrgeyxgjaoyzi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable__6BDtcLwR90R4ohXFo_LXA_IdSFnPly";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// If already signed in, skip straight to the dashboard.
+// If already signed in, go to the homepage (which shows the account-only tools once
+// signed in, rather than jumping straight into one specific tool).
 (async () => {
   const { data } = await supabaseClient.auth.getSession();
-  if (data.session) location.href = "create_survey.html";
+  if (data.session) location.href = "index.html";
 })();
 
 async function sendLink() {
@@ -82,7 +83,7 @@ async function sendLink() {
   btn.textContent = "Sending...";
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: location.origin + location.pathname.replace("login.html", "create_survey.html") }
+    options: { emailRedirectTo: location.origin + location.pathname.replace("login.html", "index.html") }
   });
   btn.disabled = false;
   btn.textContent = "Send login link";
