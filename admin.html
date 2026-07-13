@@ -84,6 +84,16 @@
   admin visibility, in which case every survey is listed here for review.
 </div>
 
+<div class="card" id="requestsCard" style="display:none">
+  <h2>Access requests</h2>
+  <p class="hint" style="color:var(--grey); font-size:12.5px; margin:0 0 12px">
+    People who asked for an account. Approving creates their login and sends them a
+    confirmation; rejecting just marks the request closed.
+  </p>
+  <div id="requestsTable"></div>
+  <div class="error" id="requestsError"></div>
+</div>
+
 <div class="card" id="connectCard">
   <h1>Choose a survey</h1>
   <div style="display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; align-items:flex-end">
@@ -139,7 +149,67 @@ let analysis = null; // parsed output of tool/scripts/analyze_supabase.R, or nul
   document.getElementById("accountBox").innerHTML =
     `Signed in as ${currentUser.email} <a onclick="signOut()">Sign out</a>`;
   await loadSurveyOptions();
+  await loadAccessRequests();
 })();
+
+const ADMIN_API_URL = "https://ookdqnnjrgeyxgjaoyzi.supabase.co/functions/v1/admin-api";
+const ADMIN_API_PUBLISHABLE_KEY = "sb_publishable__6BDtcLwR90R4ohXFo_LXA_IdSFnPly";
+
+async function callAdminApiAsUser(action, payload) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const res = await fetch(ADMIN_API_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": ADMIN_API_PUBLISHABLE_KEY,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function loadAccessRequests() {
+  try {
+    const result = await callAdminApiAsUser("list_access_requests", {});
+    const card = document.getElementById("requestsCard");
+    const pending = result.requests.filter(r => r.status === "pending");
+    if (pending.length === 0) { card.style.display = "none"; return; }
+    card.style.display = "block";
+    document.getElementById("requestsTable").innerHTML = `
+      <table>
+        <tr><th>Email</th><th>Organisation</th><th>Note</th><th>Requested</th><th></th></tr>
+        ${pending.map(r => `
+          <tr>
+            <td>${r.email}</td>
+            <td>${r.org_name || "--"}</td>
+            <td>${r.note || "--"}</td>
+            <td>${new Date(r.created_at).toLocaleDateString()}</td>
+            <td>
+              <button onclick="reviewRequest('${r.id}', 'approve')">Approve</button>
+              <button class="secondary" onclick="reviewRequest('${r.id}', 'reject')">Reject</button>
+            </td>
+          </tr>`).join("")}
+      </table>`;
+  } catch (e) {
+    // Not an admin, or no requests table access -- silently hide the card, this is
+    // expected for non-admin accounts.
+    document.getElementById("requestsCard").style.display = "none";
+  }
+}
+
+async function reviewRequest(requestId, decision) {
+  const errBox = document.getElementById("requestsError");
+  errBox.textContent = "";
+  try {
+    await callAdminApiAsUser(decision === "approve" ? "approve_access_request" : "reject_access_request", { requestId });
+    await loadAccessRequests();
+  } catch (e) {
+    errBox.textContent = "Failed: " + e.message;
+  }
+}
 
 async function loadSurveyOptions() {
   const errBox = document.getElementById("connectError");
